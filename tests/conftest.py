@@ -31,10 +31,7 @@ def db_session(test_app):
 
 @pytest.fixture
 def create_user(db_session):
-    import uuid
-    def _create_user(email=None, name='Test User', password='password', role='user'):
-        if email is None:
-            email = f'user-{str(uuid.uuid4())[:8]}@example.com'
+    def _create_user(email='user@example.com', name='Test User', password='password', role='user'):
         user = User(name=name, email=email, role=role)
         user.set_password(password)
         db_session.session.add(user)
@@ -45,12 +42,7 @@ def create_user(db_session):
 
 @pytest.fixture
 def create_member(db_session):
-    import uuid
-    def _create_member(name=None, email=None, user_id=None):
-        if name is None:
-            name = f'Member {str(uuid.uuid4())[:8]}'
-        if email is None:
-            email = f'member-{str(uuid.uuid4())[:8]}@example.com'
+    def _create_member(name='Member One', email='member@example.com', user_id=None):
         member = Member(name=name, email=email, user_id=user_id)
         db_session.session.add(member)
         db_session.session.commit()
