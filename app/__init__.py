@@ -20,8 +20,8 @@ def create_app(config_name='default'):
     jwt.init_app(app)
     
     # Configure CORS more explicitly
-    CORS(app, 
-         origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+        CORS(app, 
+            origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://localhost:5175", "http://127.0.0.1:5175"],
          supports_credentials=True,
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
@@ -73,6 +73,7 @@ def create_app(config_name='default'):
     from app.routes.reports import reports_bp
     from app.routes.admin_reports import admin_reports_bp
     from app.routes.admin_invites import admin_invites_bp
+    from app.routes.home import home_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(members_bp, url_prefix='/api/members')
@@ -81,6 +82,8 @@ def create_app(config_name='default'):
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
     app.register_blueprint(admin_reports_bp, url_prefix='/api/admin/reports')
     app.register_blueprint(admin_invites_bp, url_prefix='/api/admin/invites')
+    # Register simple landing/homepage
+    app.register_blueprint(home_bp)
 
     # Health check route
     @app.route('/api/health')
