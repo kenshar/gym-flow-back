@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: gym-flow-api
+    runtime: python
+    plan: free
+    buildCommand: |
+      cd gym-flow-back
+      pip install -r requirements.txt
+      python init_db.py
+    startCommand: cd gym-flow-back && python run.py
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: run.py
+      - key: DATABASE_URL
+        scope: all
+      - key: JWT_SECRET
+        scope: all
+      - key: DB_HOST
+        value: localhost
+      - key: DB_PORT
+        value: '5432'
+      - key: DB_NAME
+        value: gym_flow_prod
+      - key: DB_USER
+        value: $DB_USER
+      - key: DB_PASSWORD
+        value: $DB_PASSWORD
