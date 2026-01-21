@@ -18,7 +18,7 @@ services:
       - key: JWT_SECRET
         scope: all
       - key: CORS_ORIGINS
-        value: https://YOUR_USERNAME.github.io/gym-flow
+        value: https://kenshar.github.io/gym-flow-front
       - key: DB_HOST
         value: localhost
       - key: DB_PORT
