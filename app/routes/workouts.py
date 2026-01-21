@@ -1,34 +1,4 @@
-"""
-Workouts Routes - Workout & Assignment Management
-==================================================
-Purpose: Create, assign, and track member workouts with statistics.
-
-Implemented:
-  Get workout types
-  Create/Update/Delete workouts
-  Assign/Unassign members to workouts
-  Get user's workouts with filtering
-  Get member's workouts
-  Filter by type and date range
-  Duration and activity tracking
-
-Logic Flow - Dependencies & Branches:
-  ← Receives from: User model (coach/staff)
-  ← Receives from: Member model (participants)
-  ← Receives from: auth middleware (JWT validation)
-  → Sends data to: admin_reports.py (workout statistics)
-  → Sends data to: reports.py (member activity history)
-  → Queries: Attendance + Workouts for member analytics
-
-Data Flow in System:
-  User (coach) creates Workout 
-  → Members assigned to Workout
-  → Workout duration/type tracked
-  → Data flows to admin_reports.py & reports.py
-  → Combined with Attendance for member analytics
-"""
-
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
@@ -106,7 +76,7 @@ def get_workouts():
         description: Unauthorized
     """
     user_id = get_jwt_identity()
-    current_user = User.query.get(user_id)
+    current_user = db.session.get(User, user_id)
     is_admin = current_user and current_user.role == 'admin'
 
     workout_type = request.args.get('type')
@@ -168,7 +138,7 @@ def get_workout(workout_id):
         description: Workout not found
     """
     user_id = get_jwt_identity()
-    current_user = User.query.get(user_id)
+    current_user = db.session.get(User, user_id)
     is_admin = current_user and current_user.role == 'admin'
 
     if is_admin:
@@ -229,7 +199,7 @@ def create_workout():
         description: Validation error
     """
     user_id = get_jwt_identity()
-    current_user = User.query.get(user_id)
+    current_user = db.session.get(User, user_id)
     is_admin = current_user and current_user.role == 'admin'
 
     data = request.get_json() or {}
@@ -261,7 +231,7 @@ def create_workout():
     # validate member ownership if provided
     member_id = data.get('memberId') or data.get('member_id')
     if member_id:
-      member = Member.query.get(member_id)
+      member = db.session.get(Member, member_id)
       if not member:
         return jsonify({'message': 'Member not found'}), 404
       # if member has an owner (user_id) enforce ownership unless admin
@@ -272,7 +242,7 @@ def create_workout():
     if workout_date:
       workout_date = datetime.fromisoformat(workout_date.replace('Z', '+00:00'))
     else:
-      workout_date = datetime.utcnow()
+      workout_date = datetime.now(timezone.utc)
 
     workout = Workout(
       user_id=user_id,
@@ -336,7 +306,7 @@ def update_workout(workout_id):
         description: Workout not found
     """
     user_id = get_jwt_identity()
-    current_user = User.query.get(user_id)
+    current_user = db.session.get(User, user_id)
     is_admin = current_user and current_user.role == 'admin'
 
     if is_admin:
@@ -385,7 +355,7 @@ def update_workout(workout_id):
     if 'memberId' in data or 'member_id' in data:
       member_id = data.get('memberId') or data.get('member_id')
       if member_id:
-        member = Member.query.get(member_id)
+        member = db.session.get(Member, member_id)
         if not member:
           return jsonify({'message': 'Member not found'}), 404
         if member.user_id and member.user_id != user_id and not is_admin:

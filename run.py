@@ -1,8 +1,17 @@
+import os
 from app import create_app
 
-app = create_app('development')
+# Determine environment
+env = os.getenv('FLASK_ENV', 'development')
+app = create_app(env)
 
 if __name__ == '__main__':
-    print(f"Server running on port {app.config['PORT']}")
-    print(f"API Documentation available at http://localhost:{app.config['PORT']}/api-docs")
-    app.run(host='0.0.0.0', port=app.config['PORT'], debug=True)
+    port = app.config['PORT']
+    debug = app.config['DEBUG']
+    
+    print(f"Server running on port {port}")
+    print(f"Environment: {env}")
+    print(f"Debug mode: {debug}")
+    print(f"API Documentation available at http://localhost:{port}/api-docs")
+    
+    app.run(host='0.0.0.0', port=port, debug=debug)
