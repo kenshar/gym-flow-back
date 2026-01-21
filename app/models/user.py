@@ -1,3 +1,23 @@
+"""
+User Model - Foundation for Authentication
+============================================
+Purpose: Manages user credentials, roles, and password management.
+
+Implemented:
+  Bcrypt password hashing and verification
+  User role system (user/admin)
+  Password reset tokens with expiration
+  Account metadata (email, phone, timestamps)
+  Relationships to User-created Workouts
+
+Logic Flow to Other Files:
+  → auth.py: Uses set_password()/check_password() for login
+  → middleware/auth.py: JWT tokens use user.id
+  → workouts.py: User (coach) creates workouts
+  → admin_reports.py: Admin role validation
+  → All protected endpoints: User lookup by JWT identity
+"""
+
 import uuid
 import bcrypt
 from datetime import datetime

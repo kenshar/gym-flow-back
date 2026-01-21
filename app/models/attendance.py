@@ -1,3 +1,38 @@
+"""
+Attendance Model
+================
+Purpose: Track and manage gym member check-ins with timestamps and history.
+
+Implemented Features:
+  Attendance record creation with UUID primary key
+  Foreign key relationships to Member and User tables
+  Check-in timestamp with UTC default
+  Convert attendance data to dictionary format (to_dict)
+  Check if member already checked in today (has_checked_in_today)
+  Retrieve member attendance history with limit (get_member_history)
+  Retrieve all check-ins for current day (get_today_attendances)
+  String representation of attendance record (__repr__)
+
+Database Columns:
+  - id: Unique identifier (UUID)
+  - member_id: Reference to the member who checked in
+  - user_id: Reference to staff member who processed check-in (optional)
+  - check_in_time: Timestamp of check-in
+  - created_at: Timestamp of record creation
+
+Key Methods:
+  - to_dict(): Serialize to API response format with ISO timestamps
+  - has_checked_in_today(): Prevent duplicate same-day check-ins
+  - get_member_history(): Retrieve past check-in records
+  - get_today_attendances(): Generate daily attendance reports
+
+Future Enhancements:
+  - Check-out timestamps
+  - Duration tracking per visit
+  - Attendance statistics and trends
+  - Member attendance streaks
+"""
+
 import uuid
 from datetime import datetime, date
 from app import db

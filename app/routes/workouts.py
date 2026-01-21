@@ -1,3 +1,33 @@
+"""
+Workouts Routes - Workout & Assignment Management
+==================================================
+Purpose: Create, assign, and track member workouts with statistics.
+
+Implemented:
+  Get workout types
+  Create/Update/Delete workouts
+  Assign/Unassign members to workouts
+  Get user's workouts with filtering
+  Get member's workouts
+  Filter by type and date range
+  Duration and activity tracking
+
+Logic Flow - Dependencies & Branches:
+  ← Receives from: User model (coach/staff)
+  ← Receives from: Member model (participants)
+  ← Receives from: auth middleware (JWT validation)
+  → Sends data to: admin_reports.py (workout statistics)
+  → Sends data to: reports.py (member activity history)
+  → Queries: Attendance + Workouts for member analytics
+
+Data Flow in System:
+  User (coach) creates Workout 
+  → Members assigned to Workout
+  → Workout duration/type tracked
+  → Data flows to admin_reports.py & reports.py
+  → Combined with Attendance for member analytics
+"""
+
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
