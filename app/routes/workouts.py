@@ -2,7 +2,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from app.models import Workout
+from app.models import Workout, User, Member
 
 workouts_bp = Blueprint('workouts', __name__)
 
@@ -76,13 +76,21 @@ def get_workouts():
         description: Unauthorized
     """
     user_id = get_jwt_identity()
+    current_user = User.query.get(user_id)
+    is_admin = current_user and current_user.role == 'admin'
+
     workout_type = request.args.get('type')
     start_date = request.args.get('startDate')
     end_date = request.args.get('endDate')
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', 20))
+    member_id = request.args.get('memberId')
 
-    query = Workout.query.filter(Workout.user_id == user_id)
+    # Admins may specify `memberId` to view workouts for a member, otherwise regular users only see their own workouts
+    if is_admin and member_id:
+      query = Workout.query.filter(Workout.member_id == member_id)
+    else:
+      query = Workout.query.filter(Workout.user_id == user_id)
 
     if workout_type:
         query = query.filter(Workout.type == workout_type)
@@ -130,11 +138,16 @@ def get_workout(workout_id):
         description: Workout not found
     """
     user_id = get_jwt_identity()
+    current_user = User.query.get(user_id)
+    is_admin = current_user and current_user.role == 'admin'
 
-    workout = Workout.query.filter_by(id=workout_id, user_id=user_id).first()
+    if is_admin:
+      workout = Workout.query.filter_by(id=workout_id).first()
+    else:
+      workout = Workout.query.filter_by(id=workout_id, user_id=user_id).first()
 
     if not workout:
-        return jsonify({'message': 'Workout not found'}), 404
+      return jsonify({'message': 'Workout not found'}), 404
 
     return jsonify(workout.to_dict())
 
@@ -186,28 +199,62 @@ def create_workout():
         description: Validation error
     """
     user_id = get_jwt_identity()
-    data = request.get_json()
+    current_user = User.query.get(user_id)
+    is_admin = current_user and current_user.role == 'admin'
 
+    data = request.get_json() or {}
+
+    # basic validation
+    wtype = data.get('type')
     duration = int(data.get('duration', 0))
+    if not wtype:
+      return jsonify({'message': 'Workout type is required'}), 400
     if duration < 1:
-        return jsonify({'message': 'Duration must be at least 1 minute'}), 400
+      return jsonify({'message': 'Duration must be at least 1 minute'}), 400
+
+    # validate exercises
+    exercises = data.get('exercises', []) or []
+    for i, ex in enumerate(exercises):
+      if not ex.get('name') or str(ex.get('name')).strip() == '':
+        return jsonify({'message': f'Exercise #{i+1} is missing a name'}), 400
+      if 'sets' in ex and ex.get('sets') != '' and (not str(ex.get('sets')).isdigit() or int(ex.get('sets')) < 1):
+        return jsonify({'message': f'Exercise #{i+1} sets must be an integer >= 1'}), 400
+      if 'reps' in ex and ex.get('reps') != '' and (not str(ex.get('reps')).isdigit() or int(ex.get('reps')) < 1):
+        return jsonify({'message': f'Exercise #{i+1} reps must be an integer >= 1'}), 400
+      if 'weight' in ex and ex.get('weight') != '':
+        try:
+          if float(ex.get('weight')) < 0:
+            return jsonify({'message': f'Exercise #{i+1} weight must be >= 0'}), 400
+        except Exception:
+          return jsonify({'message': f'Exercise #{i+1} weight must be a number'}), 400
+
+    # validate member ownership if provided
+    member_id = data.get('memberId') or data.get('member_id')
+    if member_id:
+      member = Member.query.get(member_id)
+      if not member:
+        return jsonify({'message': 'Member not found'}), 404
+      # if member has an owner (user_id) enforce ownership unless admin
+      if member.user_id and member.user_id != user_id and not is_admin:
+        return jsonify({'message': 'You are not allowed to link a workout to this member'}), 403
 
     workout_date = data.get('date')
     if workout_date:
-        workout_date = datetime.fromisoformat(workout_date.replace('Z', '+00:00'))
+      workout_date = datetime.fromisoformat(workout_date.replace('Z', '+00:00'))
     else:
-        workout_date = datetime.utcnow()
+      workout_date = datetime.utcnow()
 
     workout = Workout(
-        user_id=user_id,
-        type=data.get('type'),
-        name=data.get('name'),
-        duration=duration,
-        calories=int(data.get('calories', 0)),
-        intensity=data.get('intensity', 'medium'),
-        exercises=data.get('exercises', []),
-        notes=data.get('notes'),
-        date=workout_date
+      user_id=user_id,
+      member_id=member_id,
+      type=wtype,
+      name=data.get('name'),
+      duration=duration,
+      calories=int(data.get('calories', 0)),
+      intensity=data.get('intensity', 'medium'),
+      exercises=exercises,
+      notes=data.get('notes'),
+      date=workout_date
     )
 
     db.session.add(workout)
@@ -259,13 +306,18 @@ def update_workout(workout_id):
         description: Workout not found
     """
     user_id = get_jwt_identity()
+    current_user = User.query.get(user_id)
+    is_admin = current_user and current_user.role == 'admin'
 
-    workout = Workout.query.filter_by(id=workout_id, user_id=user_id).first()
+    if is_admin:
+      workout = Workout.query.filter_by(id=workout_id).first()
+    else:
+      workout = Workout.query.filter_by(id=workout_id, user_id=user_id).first()
 
     if not workout:
-        return jsonify({'message': 'Workout not found'}), 404
+      return jsonify({'message': 'Workout not found'}), 404
 
-    data = request.get_json()
+    data = request.get_json() or {}
 
     if 'type' in data:
         workout.type = data['type']
@@ -278,11 +330,39 @@ def update_workout(workout_id):
     if 'intensity' in data:
         workout.intensity = data['intensity']
     if 'exercises' in data:
-        workout.exercises = data['exercises']
+      # validate exercises similar to create
+      exercises = data.get('exercises') or []
+      for i, ex in enumerate(exercises):
+        if not ex.get('name') or str(ex.get('name')).strip() == '':
+          return jsonify({'message': f'Exercise #{i+1} is missing a name'}), 400
+        if 'sets' in ex and ex.get('sets') != '' and (not str(ex.get('sets')).isdigit() or int(ex.get('sets')) < 1):
+          return jsonify({'message': f'Exercise #{i+1} sets must be an integer >= 1'}), 400
+        if 'reps' in ex and ex.get('reps') != '' and (not str(ex.get('reps')).isdigit() or int(ex.get('reps')) < 1):
+          return jsonify({'message': f'Exercise #{i+1} reps must be an integer >= 1'}), 400
+        if 'weight' in ex and ex.get('weight') != '':
+          try:
+            if float(ex.get('weight')) < 0:
+              return jsonify({'message': f'Exercise #{i+1} weight must be >= 0'}), 400
+          except Exception:
+            return jsonify({'message': f'Exercise #{i+1} weight must be a number'}), 400
+      workout.exercises = exercises
     if 'notes' in data:
         workout.notes = data['notes']
     if 'date' in data:
         workout.date = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
+
+    # allow admins to change member association
+    if 'memberId' in data or 'member_id' in data:
+      member_id = data.get('memberId') or data.get('member_id')
+      if member_id:
+        member = Member.query.get(member_id)
+        if not member:
+          return jsonify({'message': 'Member not found'}), 404
+        if member.user_id and member.user_id != user_id and not is_admin:
+          return jsonify({'message': 'You are not allowed to link a workout to this member'}), 403
+        workout.member_id = member_id
+      else:
+        workout.member_id = None
 
     db.session.commit()
 
