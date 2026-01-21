@@ -62,12 +62,14 @@ def create_app(config_name='default'):
     from app.routes.attendance import attendance_bp
     from app.routes.workouts import workouts_bp
     from app.routes.reports import reports_bp
+    from app.routes.admin_reports import admin_reports_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(members_bp, url_prefix='/api/members')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(workouts_bp, url_prefix='/api/workouts')
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
+    app.register_blueprint(admin_reports_bp, url_prefix='/api/admin/reports')
 
     # Health check route
     @app.route('/api/health')
@@ -76,7 +78,9 @@ def create_app(config_name='default'):
         return {'status': 'ok', 'timestamp': datetime.utcnow().isoformat()}
 
     # Create tables
-    with app.app_context():
-        db.create_all()
+    # Note: do not create tables automatically here. Tests and deployment
+    # scripts should control database creation/migrations explicitly. This
+    # avoids attempting to connect to the production database during test
+    # setup where tests override the database URI.
 
     return app
