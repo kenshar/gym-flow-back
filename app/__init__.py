@@ -20,8 +20,8 @@ def create_app(config_name='default'):
     jwt.init_app(app)
     
     # Configure CORS more explicitly
-        CORS(app, 
-            origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://localhost:5175", "http://127.0.0.1:5175"],
+    CORS(app,
+         origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://localhost:5175", "http://127.0.0.1:5175"],
          supports_credentials=True,
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
