@@ -61,19 +61,8 @@ Create, update, and manage gym member profiles with flexible membership options.
 `PUT /api/members/<id>` - Update member profile
 `DELETE /api/members/<id>` - Remove member
 
-**Example Member Response:**
-```json
-{
-  "id": "uuid",
-  "name": "John Doe",
-  "email": "john@example.com",
-  "membershipType": "premium",
-  "membershipStatus": "active",
-  "membershipStartDate": "2025-01-01T00:00:00",
-  "membershipEndDate": "2025-12-31T00:00:00"
-}
-```
-
+**Example Member Response**
+![alt text](image.png)
 ---
 
 ### Attendance Tracking
@@ -97,15 +86,7 @@ ISO 8601 formatted timestamps for consistency
 - `GET /api/attendance/history` - Paginated attendance history (admin)
 
 **Example Check-in Response:**
-```json
-{
-  "id": "uuid",
-  "memberId": "member-uuid",
-  "memberName": "John Doe",
-  "checkInTime": "2025-01-21T14:30:00+00:00",
-  "createdAt": "2025-01-21T14:30:00+00:00"
-}
-```
+![alt text](image-1.png)
 
 ---
 
@@ -134,26 +115,7 @@ Flexible notes and metadata
 `POST /api/workouts/<id>/members` - Assign member to workout
 
 **Example Workout:**
-```json
-{
-  "id": "uuid",
-  "userId": "coach-uuid",
-  "memberId": "member-uuid",
-  "type": "Strength Training",
-  "duration": 60,
-  "intensity": "high",
-  "calories": 450,
-  "exercises": [
-    {
-      "name": "Bench Press",
-      "sets": 4,
-      "reps": 8,
-      "weight": 185
-    }
-  ],
-  "date": "2025-01-21T14:00:00"
-}
-```
+![alt text](image-2.png)
 
 ---
 
@@ -182,21 +144,7 @@ Pagination support for large datasets
 `GET /api/reports/export` - Export reports as CSV
 
 **Example Summary Report:**
-```json
-{
-  "totalMembers": 150,
-  "activeMembers": 120,
-  "inactiveMembers": 30,
-  "totalCheckinsThisMonth": 1250,
-  "averageCheckinPerMember": 10.4,
-  "projectedMonthlyRevenue": 4500,
-  "membershipTypeBreakdown": {
-    "basic": 50,
-    "premium": 70,
-    "vip": 30
-  }
-}
-```
+![alt text](image-3.png)
 
 ---
 
@@ -221,20 +169,7 @@ ZTop N results pagination
 `GET /api/admin/reports/members-activity` - Member engagement levels
 
 **Admin Report Example:**
-```json
-{
-  "totalCheckins": 2500,
-  "avgCheckinsPerMember": 16.7,
-  "totalMembersWithActivity": 150,
-  "topMembers": [
-    {
-      "memberId": "uuid",
-      "memberName": "John Doe",
-      "checkins": 45
-    }
-  ]
-}
-```
+![alt text](image-4.png)
 
 ---
 
