@@ -54,6 +54,13 @@ def test_reports_aggregations(client, create_user, create_member, db_session):
     assert 'totalCheckins' in data
     assert data['totalCheckins'] >= 2
 
+    # CSV export of top members
+    resp = client.get('/admin/reports/attendance-frequency?days=7&top=5&format=csv', headers=headers)
+    assert resp.status_code == 200
+    assert resp.headers.get('Content-Type') == 'text/csv'
+    body = resp.data.decode('utf-8')
+    assert 'memberId' in body and '\n' in body
+
     # workouts-summary
     resp = client.get('/admin/reports/workouts-summary?days=7', headers=headers)
     assert resp.status_code == 200

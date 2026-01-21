@@ -53,20 +53,41 @@ def attendance_frequency():
     # total checkins in range
     total_checkins = db.session.query(func.count(Attendance.id)).filter(Attendance.check_in_time >= since).scalar() or 0
 
-    # per-member counts
-    members_counts = db.session.query(
-        Member.id.label('memberId'),
-        Member.name.label('memberName'),
-        func.count(Attendance.id).label('checkins')
-    ).join(Attendance, Member.id == Attendance.member_id).filter(Attendance.check_in_time >= since).group_by(Member.id).order_by(func.count(Attendance.id).desc()).limit(top).all()
+    # per-member counts (paginated)
+    members_query = db.session.query(
+      Member.id.label('memberId'),
+      Member.name.label('memberName'),
+      func.count(Attendance.id).label('checkins')
+    ).join(Attendance, Member.id == Attendance.member_id).filter(Attendance.check_in_time >= since).group_by(Member.id).order_by(func.count(Attendance.id).desc())
+
+    total_members_with_activity = members_query.count()
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', top))
+    members_counts = members_query.limit(per_page).offset((page - 1) * per_page).all()
 
     avg_checkins = float(total_checkins) / (db.session.query(func.count(Member.id)).scalar() or 1)
 
-    return jsonify({
-        'totalCheckins': int(total_checkins),
-        'avgCheckinsPerMember': avg_checkins,
-        'topMembers': [{'memberId': m.memberId, 'memberName': m.memberName, 'checkins': int(m.checkins)} for m in members_counts]
-    })
+    result = {
+      'totalCheckins': int(total_checkins),
+      'avgCheckinsPerMember': avg_checkins,
+      'totalMembersWithActivity': total_members_with_activity,
+      'page': page,
+      'per_page': per_page,
+      'topMembers': [{'memberId': m.memberId, 'memberName': m.memberName, 'checkins': int(m.checkins)} for m in members_counts]
+    }
+
+    # support CSV export of the topMembers
+    if request.args.get('format') == 'csv':
+      import csv, io
+      if not result['topMembers']:
+        return jsonify({'message': 'No data to export'}), 404
+      output = io.StringIO()
+      writer = csv.DictWriter(output, fieldnames=['memberId', 'memberName', 'checkins'])
+      writer.writeheader()
+      writer.writerows(result['topMembers'])
+      return (output.getvalue(), 200, {'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename=attendance-top-members.csv'})
+
+    return jsonify(result)
 
 
 @admin_reports_bp.route('/workouts-summary', methods=['GET'])
@@ -97,13 +118,32 @@ def workouts_summary():
     total_workouts = db.session.query(func.count(Workout.id)).filter(Workout.date >= since).scalar() or 0
     avg_duration = db.session.query(func.avg(Workout.duration)).filter(Workout.date >= since).scalar() or 0
 
-    types = db.session.query(Workout.type, func.count(Workout.id).label('count')).filter(Workout.date >= since).group_by(Workout.type).order_by(func.count(Workout.id).desc()).all()
+    types_query = db.session.query(Workout.type, func.count(Workout.id).label('count')).filter(Workout.date >= since).group_by(Workout.type).order_by(func.count(Workout.id).desc())
 
-    return jsonify({
-        'totalWorkouts': int(total_workouts),
-        'avgDuration': float(avg_duration) if avg_duration else 0,
-        'byType': [{'type': t[0], 'count': int(t.count)} for t in types]
-    })
+    # pagination for types list
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 20))
+    types = types_query.limit(per_page).offset((page - 1) * per_page).all()
+
+    result = {
+      'totalWorkouts': int(total_workouts),
+      'avgDuration': float(avg_duration) if avg_duration else 0,
+      'page': page,
+      'per_page': per_page,
+      'byType': [{'type': t[0], 'count': int(t.count)} for t in types]
+    }
+
+    if request.args.get('format') == 'csv':
+      import csv, io
+      if not result['byType']:
+        return jsonify({'message': 'No data to export'}), 404
+      output = io.StringIO()
+      writer = csv.DictWriter(output, fieldnames=['type', 'count'])
+      writer.writeheader()
+      writer.writerows(result['byType'])
+      return (output.getvalue(), 200, {'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename=workouts-by-type.csv'})
+
+    return jsonify(result)
 
 
 @admin_reports_bp.route('/members-activity', methods=['GET'])
