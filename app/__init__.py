@@ -18,7 +18,16 @@ def create_app(config_name='default'):
     # Initialize extensions
     db.init_app(app)
     jwt.init_app(app)
-    CORS(app)
+    
+    # Configure CORS more explicitly
+    CORS(app, 
+         origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    
+    # Alternative simpler CORS config
+    # CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     # Swagger configuration
     swagger_config = {

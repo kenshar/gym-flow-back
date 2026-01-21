@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func
@@ -10,7 +10,7 @@ admin_reports_bp = Blueprint('admin_reports', __name__)
 
 def _require_admin():
     user_id = get_jwt_identity()
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user or user.role != 'admin':
         return None
     return user
@@ -48,7 +48,7 @@ def attendance_frequency():
 
     days = int(request.args.get('days', 30))
     top = int(request.args.get('top', 10))
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     # total checkins in range
     total_checkins = db.session.query(func.count(Attendance.id)).filter(Attendance.check_in_time >= since).scalar() or 0
@@ -113,7 +113,7 @@ def workouts_summary():
         return jsonify({'message': 'Admin access required'}), 403
 
     days = int(request.args.get('days', 30))
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     total_workouts = db.session.query(func.count(Workout.id)).filter(Workout.date >= since).scalar() or 0
     avg_duration = db.session.query(func.avg(Workout.duration)).filter(Workout.date >= since).scalar() or 0
@@ -169,7 +169,7 @@ def members_activity():
         return jsonify({'message': 'Admin access required'}), 403
 
     days = int(request.args.get('days', 30))
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
 
     total_members = db.session.query(func.count(Member.id)).scalar() or 0
 
