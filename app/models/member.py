@@ -1,3 +1,27 @@
+"""
+Member Model - Core Business Entity
+====================================
+Purpose: Manages gym member profiles with membership tracking.
+
+Implemented:
+  Member profile and contact information
+  Membership status (active/inactive/expired/suspended)
+  Membership type (basic/premium/vip) with dates
+  Emergency contact fields
+  Relationships to Attendance & Workouts
+
+Logic Flow - Branches to:
+  ← members.py receives: CRUD operations
+  ← admin_reports.py queries: for active/inactive stats
+  → attendance.py uses: member_id for check-ins
+  → workouts.py uses: member_id for assignments
+  → reports.py uses: member activity data
+
+Data Chain:
+  User creates/manages Members → Members check in (Attendance) 
+  → Members assigned to Workouts → Data aggregated in Reports
+"""
+
 import uuid
 from datetime import datetime
 from app import db

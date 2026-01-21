@@ -1,3 +1,32 @@
+"""
+Authentication Routes Module
+==============================
+Purpose: Handle user authentication, registration, login, and password management.
+
+Features to implement:
+Implemented:
+  User registration with email validation
+  User login with JWT token generation
+  Get current authenticated user info
+  Password reset request (with token generation)
+  Password reset confirmation (with token validation)
+  Password hashing and verification
+  JWT token-based authorization
+
+Endpoints:
+  POST /api/auth/register - Register new user
+  POST /api/auth/login - Login user and get JWT token
+  GET /api/auth/me - Get current authenticated user (requires JWT)
+  POST /api/auth/reset-password - Request password reset
+  POST /api/auth/reset-password/confirm - Confirm password reset with token
+
+Future Considerations:
+  - Email verification on registration
+  - Token refresh mechanism
+  - Rate limiting on login attempts
+  - Email notifications for password resets
+"""
+
 import hashlib
 import secrets
 from datetime import datetime, timedelta
