@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flasgger import Swagger
+import os
 
 from app.config import config
 
@@ -63,7 +64,14 @@ def create_app(config_name='default'):
         "security": [{"Bearer": []}]
     }
 
-    Swagger(app, config=swagger_config, template=swagger_template)
+    # If an OpenAPI YAML exists at the repo root, load it as the template
+    # so the UI reflects the full contract. Fall back to the inline
+    # template if the file is not present.
+    openapi_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'openapi.yaml'))
+    if os.path.exists(openapi_path):
+        Swagger(app, config=swagger_config, template_file=openapi_path)
+    else:
+        Swagger(app, config=swagger_config, template=swagger_template)
 
     # Register blueprints
     from app.routes.auth import auth_bp

@@ -1,0 +1,521 @@
+openapi: 3.0.3
+info:
+  title: Gym Flow API
+  version: 1.0.0
+  description: >-
+    API contract for Gym Flow — authentication, members, attendance, workouts,
+    reports and admin invites. Designed for feature-based ownership and
+    end-to-end JWT auth.
+servers:
+  - url: http://localhost:5001/api
+    description: Local dev server (backend)
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        detail:
+          type: object
+      example:
+        message: "Validation failed"
+        detail: { field: "email", error: "invalid" }
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member]
+        created_at:
+          type: string
+          format: date-time
+      required: [id, email, role]
+    AuthRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
+        invite_code:
+          type: string
+      required: [email, password]
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+      required: [email]
+    Member:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+          enum: [active, expired, paused]
+        membership_plan_id:
+          type: string
+        membership_expires_at:
+          type: string
+          format: date-time
+      required: [id, first_name, last_name, email]
+    MembershipPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        price:
+          type: number
+          format: float
+        duration_days:
+          type: integer
+      required: [id, name, price, duration_days]
+    AttendanceRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        member_id:
+          type: string
+        checkin_at:
+          type: string
+          format: date-time
+      required: [id, member_id, checkin_at]
+    Workout:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        member_id:
+          type: string
+        name:
+          type: string
+        exercises:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              sets:
+                type: integer
+              reps:
+                type: integer
+              weight:
+                type: number
+                format: float
+      required: [id, member_id, name]
+    ReportSummary:
+      type: object
+      properties:
+        active_members:
+          type: integer
+        checkins_last_7_days:
+          type: integer
+        workouts_last_7_days:
+          type: integer
+    Invite:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        active:
+          type: boolean
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user (member or admin with invite)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Created — returns token and user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      summary: Login and receive JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/password-reset:
+    post:
+      summary: Request password reset (sends email link)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: Password reset initiated
+        '400':
+          description: Bad request
+  /auth/me:
+    get:
+      summary: Get current user info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+  /admin/invites:
+    get:
+      summary: List admin invites
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Array of invites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invite'
+    post:
+      summary: Create an admin invite
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+  /admin/invites/{id}:
+    delete:
+      summary: Revoke an invite (soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Revoked
+  /admin/members:
+    get:
+      summary: List members (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Array of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+    post:
+      summary: Create a new member (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                membership_plan_id:
+                  type: string
+              required: [first_name, last_name, email]
+      responses:
+        '201':
+          description: Member created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+  /admin/members/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get member by id
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Member object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '404':
+          description: Not found
+    put:
+      summary: Update member (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, expired, paused]
+      responses:
+        '200':
+          description: Updated member
+    delete:
+      summary: Delete a member (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+  /attendance/check-in:
+    post:
+      summary: Member check-in
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                member_id:
+                  type: string
+              required: [member_id]
+      responses:
+        '201':
+          description: Check-in created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceRecord'
+        '409':
+          description: Duplicate check-in (same day)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /attendance/member/{member_id}:
+    get:
+      summary: Attendance history for a member
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: member_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AttendanceRecord'
+  /workouts:
+    post:
+      summary: Create a workout for a member
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Workout'
+      responses:
+        '201':
+          description: Workout created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workout'
+    get:
+      summary: List workouts (query by member_id optional)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: member_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of workouts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workout'
+  /workouts/{id}:
+    get:
+      summary: Get workout by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workout object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workout'
+    put:
+      summary: Update workout
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Workout'
+      responses:
+        '200':
+          description: Updated workout
+    delete:
+      summary: Delete workout
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+  /admin/reports/summary:
+    get:
+      summary: Aggregated report summary (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Summary object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSummary'
+security:
+  - bearerAuth: []
+
+x-notes: |
+  - To enforce role-based access control, validate JWT and check `role` claim.
+  - All admin endpoints must return 403 if user is authenticated but not admin.
+  - Duplicate daily check-in prevention should return 409 Conflict.
+  - Password reset endpoint should initiate email flow; token exchange endpoint
+    can be added under `/auth/password-reset/confirm` if desired.
+  - Consider adding pagination (limit/offset) for list endpoints.
