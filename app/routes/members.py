@@ -1,3 +1,29 @@
+"""
+Members Routes - Member Management Hub
+=======================================
+Purpose: CRUD operations for members with search, filter, pagination.
+
+Implemented:
+  [✓] List members (admin only) with search/filter/pagination
+  [✓] Get member by ID with attendance/workout history
+  [✓] Create, Update, Delete member
+  [✓] Filter by status, membership type, search
+  [✓] Member statistics aggregation
+
+Logic Flow - Receives from & Sends to:
+  ← Receives: JWT auth validation, Member model
+  → Sends member_id to: attendance.py (check-in recording)
+  → Sends member_id to: workouts.py (member assignment)
+  → Feeds: admin_reports.py (member count statistics)
+  → Queries: Attendance & Workout for member stats
+
+Dependency Chain:
+  User (auth) → Members CRUD → [branches to]
+  - attendance.py (member check-ins)
+  - workouts.py (member assignments)  
+  - admin_reports.py (member statistics)
+"""
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
