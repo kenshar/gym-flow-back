@@ -1,36 +1,58 @@
 import pytest
+import os
 from app import create_app, db
 from app.models import User, Member
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def test_app():
+    """Create app with test database configuration."""
+    # Configure test database to use SQLite in memory
+    os.environ['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    
     app = create_app('default')
     app.config['TESTING'] = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    app.config['JWT_SECRET_KEY'] = 'test-secret'
+    app.config['JWT_SECRET_KEY'] = 'test-secret-key'
+    app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = False
 
     with app.app_context():
-        db.drop_all()
         db.create_all()
         yield app
         db.session.remove()
         db.drop_all()
 
 
+@pytest.fixture(autouse=True)
+def reset_db(test_app):
+    """Reset database before each test."""
+    with test_app.app_context():
+        # Clean up all tables
+        for table in reversed(db.metadata.sorted_tables):
+            db.session.execute(table.delete())
+        db.session.commit()
+        yield
+        # Clean up after test
+        db.session.remove()
+
+
 @pytest.fixture(scope='function')
 def client(test_app):
-    return test_app.test_client()
+    """Test client fixture."""
+    with test_app.app_context():
+        yield test_app.test_client()
 
 
 @pytest.fixture(scope='function')
 def db_session(test_app):
+    """Database session fixture."""
     with test_app.app_context():
         yield db
 
 
 @pytest.fixture
 def create_user(db_session):
+    """Factory fixture for creating test users."""
     import uuid
     def _create_user(email=None, name='Test User', password='password', role='user'):
         if email is None:
@@ -45,6 +67,7 @@ def create_user(db_session):
 
 @pytest.fixture
 def create_member(db_session):
+    """Factory fixture for creating test members."""
     import uuid
     def _create_member(name=None, email=None, user_id=None):
         if name is None:

@@ -77,18 +77,26 @@ def register():
     """
     data = request.get_json()
 
+    # Validate required fields
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+
+    if not name or not email or not password:
+        return jsonify({'message': 'Name, email, and password are required'}), 400
+
     # Check if user exists
-    existing_user = User.query.filter_by(email=data.get('email')).first()
+    existing_user = User.query.filter_by(email=email).first()
     if existing_user:
-        return jsonify({'message': 'Email already registered'}), 400
+        return jsonify({'message': 'Email already exists'}), 400
 
     # Create new user
     user = User(
-        name=data.get('name'),
-        email=data.get('email'),
+        name=name,
+        email=email,
         phone=data.get('phone')
     )
-    user.set_password(data.get('password'))
+    user.set_password(password)
 
     db.session.add(user)
     db.session.commit()
@@ -97,6 +105,7 @@ def register():
     token = create_access_token(identity=user.id)
 
     return jsonify({
+        'message': 'User registered successfully',
         'access_token': token,  # Changed from 'token'
         'user': {
             'id': user.id,
@@ -224,8 +233,11 @@ def request_password_reset():
 
     user = User.query.filter_by(email=email).first()
 
+    # Always return 200 for security (don't reveal if user exists)
     if not user:
-        return jsonify({'message': 'User not found'}), 404
+        return jsonify({
+            'message': 'If the email exists, password reset instructions have been sent'
+        }), 200
 
     # Generate reset token
     reset_token = secrets.token_hex(32)
@@ -235,9 +247,9 @@ def request_password_reset():
 
     # In production, send email with reset link
     return jsonify({
-        'message': 'Password reset instructions sent',
+        'message': 'If the email exists, password reset instructions have been sent',
         'resetToken': reset_token
-    })
+    }), 200
 
 
 @auth_bp.route('/reset-password/confirm', methods=['POST'])
@@ -270,7 +282,11 @@ def confirm_password_reset():
     """
     data = request.get_json()
     token = data.get('token')
-    password = data.get('password')
+    # Handle both 'password' and 'newPassword' for flexibility
+    password = data.get('password') or data.get('newPassword')
+
+    if not token or not password:
+        return jsonify({'message': 'Token and password are required'}), 400
 
     hashed_token = hashlib.sha256(token.encode()).hexdigest()
     user = User.query.filter_by(reset_password_token=hashed_token).first()

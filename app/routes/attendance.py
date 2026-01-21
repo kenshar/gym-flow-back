@@ -81,7 +81,7 @@ def check_in():
     return jsonify({
         'message': 'Check-in successful! 🎉',
         'data': attendance.to_dict()
-    }), 201
+    }), 200
 
 
 @attendance_bp.route('/history/<member_id>', methods=['GET'])
