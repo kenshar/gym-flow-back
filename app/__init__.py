@@ -119,6 +119,19 @@ def create_app(config_name='default'):
                     db.session.add(admin)
                     db.session.commit()
                     print("Admin user created: admin@example.com")
+
+                # Seed test user if not exists
+                test_user = User.query.filter_by(email='user@example.com').first()
+                if not test_user:
+                    test_user = User(
+                        name='Test User',
+                        email='user@example.com',
+                        role='user'
+                    )
+                    test_user.set_password('password123')
+                    db.session.add(test_user)
+                    db.session.commit()
+                    print("Test user created: user@example.com")
             except Exception as e:
                 print(f"Seed error: {e}")
     except Exception as e:
