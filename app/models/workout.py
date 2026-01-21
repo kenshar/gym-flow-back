@@ -36,6 +36,7 @@ class Workout(db.Model):
             'id': self.id,
             'userId': self.user_id,
             'memberId': self.member_id,
+            'member': self.member.to_dict() if getattr(self, 'member', None) else None,
             'type': self.type,
             'name': self.name,
             'duration': self.duration,
