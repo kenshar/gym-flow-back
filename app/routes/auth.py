@@ -68,7 +68,7 @@ def register():
     token = create_access_token(identity=user.id)
 
     return jsonify({
-        'token': token,
+        'access_token': token,  # Changed from 'token'
         'user': {
             'id': user.id,
             'name': user.name,
@@ -125,7 +125,7 @@ def login():
     token = create_access_token(identity=user.id)
 
     return jsonify({
-        'token': token,
+        'access_token': token,  # Changed from 'token'
         'user': {
             'id': user.id,
             'name': user.name,
@@ -158,12 +158,10 @@ def get_current_user():
         return jsonify({'message': 'User not found'}), 404
 
     return jsonify({
-        'user': {
-            'id': user.id,
-            'name': user.name,
-            'email': user.email,
-            'role': user.role
-        }
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'role': user.role
     })
 
 
