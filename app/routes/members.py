@@ -169,19 +169,9 @@ def get_member_stats(member_id):
     recent_workouts = Workout.query.filter_by(member_id=member_id)\
         .order_by(Workout.date.desc()).limit(5).all()
 
-    attendance_with_duration = Attendance.query.filter(
-        Attendance.member_id == member_id,
-        Attendance.duration.isnot(None)
-    ).all()
-
-    avg_duration = 0
-    if attendance_with_duration:
-        avg_duration = sum(a.duration for a in attendance_with_duration) / len(attendance_with_duration)
-
     return jsonify({
-        'totalVisits': attendance_count,
+        'totalAttendance': attendance_count,
         'totalWorkouts': workout_count,
-        'averageVisitDuration': round(avg_duration),
         'recentAttendance': [a.to_dict() for a in recent_attendance],
         'recentWorkouts': [w.to_dict() for w in recent_workouts]
     })
@@ -228,10 +218,16 @@ def create_member():
         description: Admin access required
     """
     data = request.get_json()
+    email = data.get('email')
+
+    # Check if member with this email already exists
+    existing_member = Member.query.filter_by(email=email).first()
+    if existing_member:
+        return jsonify({'message': 'A member with this email already exists'}), 400
 
     member = Member(
         name=data.get('name'),
-        email=data.get('email'),
+        email=email,
         phone=data.get('phone'),
         membership_type=data.get('membershipType', 'basic'),
         membership_status=data.get('membershipStatus', 'active'),
