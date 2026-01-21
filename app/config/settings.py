@@ -26,6 +26,10 @@ class Config:
     JWT_SECRET_KEY = SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)
 
+    # Invite code for creating admin accounts via public registration
+    # Set this in environment (ADMIN_INVITE_CODE) to a secret value.
+    ADMIN_INVITE_CODE = os.getenv('ADMIN_INVITE_CODE', '')
+
     # Server
     PORT = int(os.getenv('PORT', 5000))
 
