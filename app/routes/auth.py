@@ -83,10 +83,17 @@ def register():
         return jsonify({'message': 'Email already registered'}), 400
 
     # Create new user
+    # Allow optional role in registration (note: permitting admin via public signup
+    # is a security risk; ensure this is intended in your deployment)
+    role = data.get('role', 'user')
+    if role not in ('user', 'admin'):
+      role = 'user'
+
     user = User(
-        name=data.get('name'),
-        email=data.get('email'),
-        phone=data.get('phone')
+      name=data.get('name'),
+      email=data.get('email'),
+      phone=data.get('phone'),
+      role=role,
     )
     user.set_password(data.get('password'))
 
