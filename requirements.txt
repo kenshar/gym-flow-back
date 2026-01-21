@@ -1,2 +1,10 @@
+
 flask
 flask-cors
+flask_sqlalchemy
+flask-jwt-extended
+flasgger
+pytest
+bcrypt
+python-dotenv
+psycopg2-binary
