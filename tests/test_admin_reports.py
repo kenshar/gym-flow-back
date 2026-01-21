@@ -7,7 +7,7 @@ from app.models import Attendance, Workout
 def auth_headers(client, email, password):
     resp = client.post('/api/auth/register', json={'name': 'T', 'email': email, 'password': password})
     assert resp.status_code == 201
-    token = resp.get_json().get('token')
+    token = resp.get_json().get('access_token')
     return {'Authorization': f'Bearer {token}'}
 
 
@@ -28,7 +28,7 @@ def test_reports_aggregations(client, create_user, create_member, db_session):
     # create admin and get headers
     admin = create_user(email='adminr@example.com', name='AdminR', role='admin')
     resp = client.post('/api/auth/login', json={'email': 'adminr@example.com', 'password': 'password'})
-    token = resp.get_json()['token']
+    token = resp.get_json()['access_token']
     headers = {'Authorization': f'Bearer {token}'}
 
     # create members and activity
