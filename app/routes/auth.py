@@ -32,6 +32,7 @@ import secrets
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask import current_app
 from flasgger import swag_from
 from app import db
 from app.models import User
@@ -88,6 +89,15 @@ def register():
     role = data.get('role', 'user')
     if role not in ('user', 'admin'):
       role = 'user'
+
+    # If requesting admin role, require a valid invite code
+    invite_code = data.get('inviteCode') or data.get('invite_code')
+    if role == 'admin':
+      expected = current_app.config.get('ADMIN_INVITE_CODE', '')
+      if not expected:
+        return jsonify({'message': 'Admin signup is disabled'}), 403
+      if not invite_code or invite_code != expected:
+        return jsonify({'message': 'Invalid or missing admin invite code'}), 403
 
     user = User(
       name=data.get('name'),
