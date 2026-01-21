@@ -76,7 +76,9 @@ def create_app(config_name='default'):
         return {'status': 'ok', 'timestamp': datetime.utcnow().isoformat()}
 
     # Create tables
-    with app.app_context():
-        db.create_all()
+    # Note: do not create tables automatically here. Tests and deployment
+    # scripts should control database creation/migrations explicitly. This
+    # avoids attempting to connect to the production database during test
+    # setup where tests override the database URI.
 
     return app
