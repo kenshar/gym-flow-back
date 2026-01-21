@@ -1,0 +1,302 @@
+"""
+Authentication Routes Module
+==============================
+Purpose: Handle user authentication, registration, login, and password management.
+
+Features to implement:
+Implemented:
+  User registration with email validation
+  User login with JWT token generation
+  Get current authenticated user info
+  Password reset request (with token generation)
+  Password reset confirmation (with token validation)
+  Password hashing and verification
+  JWT token-based authorization
+
+Endpoints:
+  POST /api/auth/register - Register new user
+  POST /api/auth/login - Login user and get JWT token
+  GET /api/auth/me - Get current authenticated user (requires JWT)
+  POST /api/auth/reset-password - Request password reset
+  POST /api/auth/reset-password/confirm - Confirm password reset with token
+
+Future Considerations:
+  - Email verification on registration
+  - Token refresh mechanism
+  - Rate limiting on login attempts
+  - Email notifications for password resets
+"""
+
+import hashlib
+import secrets
+from datetime import datetime, timedelta
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flasgger import swag_from
+from app import db
+from app.models import User
+
+auth_bp = Blueprint('auth', __name__)
+
+
+@auth_bp.route('/register', methods=['POST'])
+def register():
+    """
+    Register a new user
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - email
+            - password
+          properties:
+            name:
+              type: string
+              example: John Doe
+            email:
+              type: string
+              example: john@example.com
+            password:
+              type: string
+              example: password123
+            phone:
+              type: string
+              example: "+1234567890"
+    responses:
+      201:
+        description: User registered successfully
+      400:
+        description: Email already registered
+    """
+    data = request.get_json()
+
+    # Validate required fields
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+
+    if not name or not email or not password:
+        return jsonify({'message': 'Name, email, and password are required'}), 400
+
+    # Check if user exists
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        return jsonify({'message': 'Email already exists'}), 400
+
+    # Create new user
+    user = User(
+        name=name,
+        email=email,
+        phone=data.get('phone')
+    )
+    user.set_password(password)
+
+    db.session.add(user)
+    db.session.commit()
+
+    # Generate token
+    token = create_access_token(identity=user.id)
+
+    return jsonify({
+        'message': 'User registered successfully',
+        'access_token': token,  # Changed from 'token'
+        'user': {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'role': user.role
+        }
+    }), 201
+
+
+@auth_bp.route('/login', methods=['POST'])
+def login():
+    """
+    Login user
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+              example: john@example.com
+            password:
+              type: string
+              example: password123
+    responses:
+      200:
+        description: Login successful
+      400:
+        description: Email and password are required
+      401:
+        description: Invalid email or password
+    """
+    data = request.get_json()
+
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({'message': 'Email and password are required'}), 400
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user or not user.check_password(password):
+        return jsonify({'message': 'Invalid email or password'}), 401
+
+    token = create_access_token(identity=user.id)
+
+    return jsonify({
+        'access_token': token,  # Changed from 'token'
+        'user': {
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'role': user.role
+        }
+    })
+
+
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    """
+    Get current authenticated user
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Current user information
+      401:
+        description: Unauthorized
+    """
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+
+    return jsonify({
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'role': user.role
+    })
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def request_password_reset():
+    """
+    Request password reset
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - email
+          properties:
+            email:
+              type: string
+              example: john@example.com
+    responses:
+      200:
+        description: Password reset instructions sent
+      404:
+        description: User not found
+    """
+    data = request.get_json()
+    email = data.get('email')
+
+    user = User.query.filter_by(email=email).first()
+
+    # Always return 200 for security (don't reveal if user exists)
+    if not user:
+        return jsonify({
+            'message': 'If the email exists, password reset instructions have been sent'
+        }), 200
+
+    # Generate reset token
+    reset_token = secrets.token_hex(32)
+    user.reset_password_token = hashlib.sha256(reset_token.encode()).hexdigest()
+    user.reset_password_expires = datetime.utcnow() + timedelta(minutes=10)
+    db.session.commit()
+
+    # In production, send email with reset link
+    return jsonify({
+        'message': 'If the email exists, password reset instructions have been sent',
+        'resetToken': reset_token
+    }), 200
+
+
+@auth_bp.route('/reset-password/confirm', methods=['POST'])
+def confirm_password_reset():
+    """
+    Confirm password reset
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - token
+            - password
+          properties:
+            token:
+              type: string
+            password:
+              type: string
+              example: newpassword123
+    responses:
+      200:
+        description: Password reset successful
+      400:
+        description: Invalid or expired reset token
+    """
+    data = request.get_json()
+    token = data.get('token')
+    # Handle both 'password' and 'newPassword' for flexibility
+    password = data.get('password') or data.get('newPassword')
+
+    if not token or not password:
+        return jsonify({'message': 'Token and password are required'}), 400
+
+    hashed_token = hashlib.sha256(token.encode()).hexdigest()
+    user = User.query.filter_by(reset_password_token=hashed_token).first()
+
+    if not user or user.reset_password_expires < datetime.utcnow():
+        return jsonify({'message': 'Invalid or expired reset token'}), 400
+
+    user.set_password(password)
+    user.reset_password_token = None
+    user.reset_password_expires = None
+    db.session.commit()
+
+    return jsonify({'message': 'Password reset successful'})

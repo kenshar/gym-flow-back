@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: gym-flow-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: run.py
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: JWT_ALGORITHM
+        sync: false
+      - key: JWT_EXPIRY_MINUTES
+        sync: false
