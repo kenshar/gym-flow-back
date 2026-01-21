@@ -93,11 +93,19 @@ def register():
     # If requesting admin role, require a valid invite code
     invite_code = data.get('inviteCode') or data.get('invite_code')
     if role == 'admin':
+      # First preference: static ADMIN_INVITE_CODE from config
       expected = current_app.config.get('ADMIN_INVITE_CODE', '')
-      if not expected:
-        return jsonify({'message': 'Admin signup is disabled'}), 403
-      if not invite_code or invite_code != expected:
-        return jsonify({'message': 'Invalid or missing admin invite code'}), 403
+      if expected and invite_code == expected:
+        pass
+      else:
+        # Fall back to checking AdminInvite records
+        from app.models import AdminInvite
+        invite = AdminInvite.query.filter_by(code=invite_code, active=True).first() if invite_code else None
+        if not invite:
+          return jsonify({'message': 'Invalid or missing admin invite code'}), 403
+        # mark invite used (one-time)
+        invite.active = False
+        db.session.commit()
 
     user = User(
       name=data.get('name'),
