@@ -2,7 +2,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
 
 members_data = [
     { "id": 1, "name": "Branice Nashilu", "status": "Active", "plan": "Gold" },
