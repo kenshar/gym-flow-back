@@ -69,7 +69,7 @@ def create_app(config_name='default'):
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(workouts_bp, url_prefix='/api/workouts')
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
-    app.register_blueprint(admin_reports_bp, url_prefix='/admin/reports')
+    app.register_blueprint(admin_reports_bp, url_prefix='/api/admin/reports')
 
     # Health check route
     @app.route('/api/health')
