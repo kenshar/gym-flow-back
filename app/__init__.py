@@ -71,6 +71,7 @@ def create_app(config_name='default'):
     from app.routes.reports import reports_bp
     from app.routes.admin_reports import admin_reports_bp
     from app.routes.admin_invites import admin_invites_bp
+    from app.routes.member_requests import member_requests_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(members_bp, url_prefix='/api/members')
@@ -79,6 +80,7 @@ def create_app(config_name='default'):
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
     app.register_blueprint(admin_reports_bp, url_prefix='/api/admin/reports')
     app.register_blueprint(admin_invites_bp, url_prefix='/api/admin/invites')
+    app.register_blueprint(member_requests_bp, url_prefix='/api/member-requests')
 
     # Root route
     @app.route('/')
@@ -99,6 +101,9 @@ def create_app(config_name='default'):
     # Create tables and seed data (non-blocking)
     try:
         with app.app_context():
+            # Import all models to register them with SQLAlchemy
+            from app.models import User, Member, Attendance, Workout, AdminInvite, MemberRequest
+            
             try:
                 db.create_all()
                 print("Database tables created successfully")
